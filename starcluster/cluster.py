@@ -807,7 +807,7 @@ class Cluster(object):
         count = len(aliases) if not spot_bid else 1
         user_data = self._get_cluster_userdata(aliases)
         kwargs = dict(price=spot_bid, instance_type=instance_type,
-                      min_count=count, max_count=count, count=count,
+                      min_count=1, max_count=1, count=1,
                       key_name=self.keyname, security_groups=[cluster_sg],
                       availability_zone_group=cluster_sg,
                       launch_group=cluster_sg,
@@ -815,11 +815,8 @@ class Cluster(object):
                       user_data=user_data,
                       placement_group=placement_group)
         resvs = []
-        if spot_bid:
-            for alias in aliases:
-                kwargs['user_data'] = self._get_cluster_userdata([alias])
-                resvs.extend(self.ec2.request_instances(image_id, **kwargs))
-        else:
+        for alias in aliases:
+            kwargs['user_data'] = self._get_cluster_userdata([alias])
             resvs.append(self.ec2.request_instances(image_id, **kwargs))
         for resv in resvs:
             log.info(str(resv), extra=dict(__raw__=True))
@@ -1262,7 +1259,8 @@ class Cluster(object):
         """
         log.info("Waiting for SSH to come up on all nodes...")
         nodes = nodes or self.get_nodes_or_raise()
-        self.pool.map(lambda n: n.wait(interval=self.refresh_interval), nodes)
+        self.pool.map(lambda n: n.wait(interval=self.refresh_interval), nodes,
+                      jobid_fn=lambda n: n.alias)
 
     @print_timing("Waiting for cluster to come up")
     def wait_for_cluster(self, msg="Waiting for cluster to come up..."):
@@ -1276,7 +1274,7 @@ class Cluster(object):
         interval = self.refresh_interval
         log.info("%s %s" % (msg, "(updating every %ds)" % interval))
         try:
-            self.wait_for_active_spots()
+            #self.wait_for_active_spots()
             self.wait_for_active_instances()
             self.wait_for_running_instances()
             self.wait_for_ssh()
@@ -1754,6 +1752,10 @@ class ClusterValidator(validators.Validator):
         if not image:
             raise exception.ClusterValidationError('Image %s does not exist' %
                                                    image_id)
+            
+        #PS: Do not check platform
+        return True    
+            
         image_platform = image.architecture
         image_is_hvm = (image.virtualization_type == "hvm")
         if image_is_hvm and instance_type not in static.HVM_TYPES:

@@ -12,6 +12,7 @@ import tempfile
 import boto
 import boto.ec2
 import boto.s3.connection
+import clouds.openstack
 
 from starcluster import image
 from starcluster import utils
@@ -74,7 +75,7 @@ class EasyEC2(EasyAWS):
                       proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
                       proxy_pass=aws_proxy_pass)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
-                                      boto.connect_ec2, **kwargs)
+                                      clouds.openstack.connect_ec2, **kwargs)
         kwargs = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
                       aws_port=aws_port, aws_is_secure=aws_is_secure,
                       aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,
@@ -176,16 +177,13 @@ class EasyEC2(EasyAWS):
             sg.authorize('udp', 1, 65535, src_group=src_group)
         return sg
 
-    def get_all_security_groups(self, groupnames=[]):
+    def get_all_security_groups(self, groupnames=None):
         """
         Returns all security groups
 
         groupnames - optional list of group names to retrieve
         """
-        filters = {}
-        if groupnames:
-            filters = {'group-name': groupnames}
-        return self.get_security_groups(filters=filters)
+        return self.get_security_groups(groupnames = groupnames)
 
     def get_group_or_none(self, name):
         """
@@ -214,8 +212,7 @@ class EasyEC2(EasyAWS):
 
     def get_security_group(self, groupname):
         try:
-            return self.get_security_groups(
-                filters={'group-name': groupname})[0]
+            return self.get_security_groups(groupnames=[groupname])[0]
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidGroup.NotFound":
                 raise exception.SecurityGroupDoesNotExist(groupname)
@@ -223,11 +220,11 @@ class EasyEC2(EasyAWS):
         except IndexError:
             raise exception.SecurityGroupDoesNotExist(groupname)
 
-    def get_security_groups(self, filters=None):
+    def get_security_groups(self, groupnames=None,  filters=None):
         """
         Returns all security groups on this EC2 account
         """
-        return self.conn.get_all_security_groups(filters=filters)
+        return self.conn.get_all_security_groups(groupnames = groupnames, filters=filters)
 
     def get_permission_or_none(self, group, ip_protocol, from_port, to_port,
                                cidr_ip=None):
@@ -340,18 +337,19 @@ class EasyEC2(EasyAWS):
                                                  device_fmt=device_fmt)
             # prune any ephemeral drives defined in the AMI's block device map
             # from the runtime block device map
-            for dev in img.block_device_mapping:
-                bdt = img.block_device_mapping.get(dev)
-                if bdt.ephemeral_name:
-                    ephnum = int(bdt.ephemeral_name.split('ephemeral')[1])
-                    drive_letter = chr(ord('b') + ephnum)
-                    device = device_fmt % drive_letter
-                    log.debug("Removing ephemeral drive %s from runtime block "
-                              "device mapping (already mapped by AMI: %s)" %
-                              (device, img.id))
-                    bdmap.pop(device)
+            if img.block_device_mapping != None:
+                for dev in img.block_device_mapping:
+                    bdt = img.block_device_mapping.get(dev)
+                    if bdt.ephemeral_name:
+                        ephnum = int(bdt.ephemeral_name.split('ephemeral')[1])
+                        drive_letter = chr(ord('b') + ephnum)
+                        device = device_fmt % drive_letter
+                        log.debug("Removing ephemeral drive %s from runtime block "
+                                  "device mapping (already mapped by AMI: %s)" %
+                                  (device, img.id))
+                        bdmap.pop(device)
             block_device_map = bdmap
-        if price:
+        if False:
             return self.request_spot_instances(
                 price, image_id, instance_type=instance_type,
                 count=count, launch_group=launch_group, key_name=key_name,
@@ -474,7 +472,9 @@ class EasyEC2(EasyAWS):
         try:
             attrs = self.conn.get_instance_attribute(instance_id, 'userData')
             user_data = attrs.get('userData', '') or ''
-            return base64.b64decode(user_data)
+            return user_data
+            ##PS
+            #return base64.b64decode(user_data)
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidInstanceID.NotFound":
                 raise exception.InstanceDoesNotExist(instance_id)
@@ -494,8 +494,7 @@ class EasyEC2(EasyAWS):
 
     def get_instance(self, instance_id):
         try:
-            return self.get_all_instances(
-                filters={'instance-id': instance_id})[0]
+            return self.get_all_instances(instance_ids=[instance_id])[0]
         except boto.exception.EC2ResponseError, e:
             if e.error_code == "InvalidInstanceID.NotFound":
                 raise exception.InstanceDoesNotExist(instance_id)

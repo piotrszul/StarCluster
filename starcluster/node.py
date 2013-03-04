@@ -970,8 +970,7 @@ class Node(object):
         return True
 
     def update(self):
-        res = self.ec2.get_all_instances(filters={'instance-id': self.id})
-        self.instance = res[0]
+        self.instance = self.ec2.get_instance(self.id)
         return self.state
 
     @property

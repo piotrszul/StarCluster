@@ -152,7 +152,7 @@ open(akf, 'w').write(fixed)
 """
 
 
-def bundle_userdata_files(fileobjs, tar_fname=None, compress=True,
+def bundle_userdata_files(fileobjs, tar_fname=None, compress=False,
                           use_cloudinit=True):
     script_type = starts_with_mappings['#!']
     ignored_type = starts_with_mappings['#ignored']
@@ -174,7 +174,7 @@ def bundle_userdata_files(fileobjs, tar_fname=None, compress=True,
         return userdata_script_from_files(fileobjs, tar_fname=tar_fname)
 
 
-def unbundle_userdata(string, decompress=True):
+def unbundle_userdata(string, decompress=False):
     udata = {}
     if string.startswith('#!'):
         tf = get_tar_from_userdata(string)
