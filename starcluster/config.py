@@ -3,7 +3,7 @@ import urllib
 import StringIO
 import ConfigParser
 
-from starcluster import utils
+from starcluster import utils, cloud
 from starcluster import static
 from starcluster import cluster
 from starcluster import awsutils
@@ -665,12 +665,7 @@ class StarClusterConfig(object):
         the StarCluster config file. Returns an EasyEC2 object if
         successful.
         """
-        aws = self.get_aws_credentials()
-        try:
-            ec2 = awsutils.EasyEC2(**aws)
-            return ec2
-        except TypeError:
-            raise exception.ConfigError("no aws credentials found")
+        return cloud.CloudFactory.get(self).get_easy_ec2()
 
     def get_cluster_manager(self):
         ec2 = self.get_easy_ec2()

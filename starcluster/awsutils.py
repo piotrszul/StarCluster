@@ -12,7 +12,6 @@ import tempfile
 import boto
 import boto.ec2
 import boto.s3.connection
-import clouds.openstack
 
 from starcluster import image
 from starcluster import utils
@@ -61,7 +60,7 @@ class EasyAWS(object):
 
 
 class EasyEC2(EasyAWS):
-    def __init__(self, aws_access_key_id, aws_secret_access_key,
+    def __init__(self, aws_access_key_id, aws_secret_access_key, connection_authenticator = boto.connect_ec2,
                  aws_ec2_path='/', aws_s3_host=None, aws_s3_path='/',
                  aws_port=None, aws_region_name=None, aws_is_secure=True,
                  aws_region_host=None, aws_proxy=None, aws_proxy_port=None,
@@ -75,7 +74,7 @@ class EasyEC2(EasyAWS):
                       proxy_port=aws_proxy_port, proxy_user=aws_proxy_user,
                       proxy_pass=aws_proxy_pass)
         super(EasyEC2, self).__init__(aws_access_key_id, aws_secret_access_key,
-                                      clouds.openstack.connect_ec2, **kwargs)
+                                      connection_authenticator, **kwargs)
         kwargs = dict(aws_s3_host=aws_s3_host, aws_s3_path=aws_s3_path,
                       aws_port=aws_port, aws_is_secure=aws_is_secure,
                       aws_proxy=aws_proxy, aws_proxy_port=aws_proxy_port,

@@ -82,8 +82,8 @@ class Hadoop(clustersetup.ClusterSetup):
     def __init__(self, hadoop_tmpdir='/mnt/hadoop'):
         self.hadoop_tmpdir = hadoop_tmpdir
         self.hadoop_home = '/usr/lib/hadoop'
-        self.hadoop_conf = '/etc/hadoop-0.20/conf.starcluster'
-        self.empty_conf = '/etc/hadoop-0.20/conf.empty'
+        self.hadoop_conf = '/etc/hadoop/conf.starcluster'
+        self.empty_conf = '/etc/hadoop/conf.empty'
         self.centos_java_home = '/usr/lib/jvm/java'
         self.centos_alt_cmd = 'alternatives'
         self.ubuntu_javas = ['/usr/lib/jvm/java-6-sun/jre',
@@ -118,8 +118,8 @@ class Hadoop(clustersetup.ClusterSetup):
     def _install_empty_conf(self, node):
         node.ssh.execute('cp -r %s %s' % (self.empty_conf, self.hadoop_conf))
         alternatives_cmd = self._get_alternatives_cmd(node)
-        cmd = '%s --install /etc/hadoop-0.20/conf ' % alternatives_cmd
-        cmd += 'hadoop-0.20-conf %s 50' % self.hadoop_conf
+        cmd = '%s --install /etc/hadoop/conf ' % alternatives_cmd
+        cmd += 'hadoop-conf %s 50' % self.hadoop_conf
         node.ssh.execute(cmd)
 
     def _configure_env(self, node):
@@ -192,12 +192,12 @@ class Hadoop(clustersetup.ClusterSetup):
             self.pool.simple_job(self._install_empty_conf, (node,),
                                  jobid=node.alias)
         self.pool.wait(numtasks=len(nodes))
-        log.info("Configuring environment...")
-        for node in nodes:
-            self.pool.simple_job(self._configure_env, (node,),
-                                 jobid=node.alias)
-        self.pool.wait(numtasks=len(nodes))
-        log.info("Configuring MapReduce Site...")
+        #log.info("Configuring environment...")
+        #for node in nodes:
+        #   self.pool.simple_job(self._configure_env, (node,),
+        #                         jobid=node.alias)
+        #self.pool.wait(numtasks=len(nodes))
+        #log.info("Configuring MapReduce Site...")
         for node in nodes:
             self.pool.simple_job(self._configure_mapreduce_site, (node, cfg),
                                  jobid=node.alias)
@@ -239,23 +239,23 @@ class Hadoop(clustersetup.ClusterSetup):
         node.ssh.execute("chmod -R %s %s" % (permission, path))
 
     def _start_datanode(self, node):
-        node.ssh.execute('/etc/init.d/hadoop-0.20-datanode restart')
+        node.ssh.execute('/etc/init.d/hadoop-hdfs-datanode restart')
 
     def _start_tasktracker(self, node):
-        node.ssh.execute('/etc/init.d/hadoop-0.20-tasktracker restart')
+        node.ssh.execute('/etc/init.d/hadoop-0.20-mapreduce-tasktracker restart')
 
     def _start_hadoop(self, master, nodes):
         log.info("Starting namenode...")
-        master.ssh.execute('/etc/init.d/hadoop-0.20-namenode restart')
+        master.ssh.execute('/etc/init.d/hadoop-hdfs-namenode restart')
         log.info("Starting secondary namenode...")
-        master.ssh.execute('/etc/init.d/hadoop-0.20-secondarynamenode restart')
+        master.ssh.execute('/etc/init.d/hadoop-hdfs-secondarynamenode restart')
         log.info("Starting datanode on all nodes...")
         for node in nodes:
             self.pool.simple_job(self._start_datanode, (node,),
                                  jobid=node.alias)
         self.pool.wait()
         log.info("Starting jobtracker...")
-        master.ssh.execute('/etc/init.d/hadoop-0.20-jobtracker restart')
+        master.ssh.execute('/etc/init.d/hadoop-0.20-mapreduce-jobtracker restart')
         log.info("Starting tasktracker on all nodes...")
         for node in nodes:
             self.pool.simple_job(self._start_tasktracker, (node,),

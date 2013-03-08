@@ -64,6 +64,7 @@ class Node(object):
     """
     def __init__(self, instance, key_location, alias=None, user='root'):
         self.instance = instance
+        #PS: This seems to be an ugly hack but should be OK anyway
         self.ec2 = awsutils.EasyEC2(None, None)
         self.ec2._conn = instance.connection
         self.key_location = key_location
